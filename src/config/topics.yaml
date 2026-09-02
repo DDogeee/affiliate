@@ -1,0 +1,30 @@
+# Extensible topic/product config — adding a new product category or platform is data, not code.
+topics:
+  - id: housing-equipment
+    displayName: "Thiết bị gia dụng"
+    keywords: ["家居收纳", "厨房收纳", "家用好物", "housing equipment"]
+    category: housing-equipment
+    enabled: true
+
+  # Example future extensibility:
+  # - id: kitchenware
+  #   displayName: "Đồ bếp"
+  #   keywords: ["厨房好物"]
+  #   category: kitchenware
+  #   enabled: false
+
+sources:
+  enabled: ["weibo"]
+  # add "douyin", "xiaohongshu" by implementing adapter and adding name here
+
+products:
+  enabled: ["shopee", "tiktok-shop"]
+  # add "lazada" similarly
+  matching:
+    threshold: 0.3
+    limit: 5
+
+publishers:
+  enabled: ["facebook", "tiktok"]
+  # add "youtube", "instagram" similarly
+  requireReview: true
