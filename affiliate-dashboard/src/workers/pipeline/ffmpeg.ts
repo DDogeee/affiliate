@@ -3,6 +3,7 @@ import path from "path";
 import { spawn } from "child_process";
 import { jobLogger } from "@/lib/logger";
 import { getRenderedPath, getSourcePath, getTmpPath } from "@/lib/storage";
+import { detectSubtitleBand, logBand, SubtitleBand } from "./subbands";
 
 function escapeFilterPath(p: string): string {
   // ffmpeg filter path escaping: backslashes -> forward, escape : ' \ , within the argument
@@ -99,21 +100,42 @@ async function burnSubtitles(
   start: number
 ): Promise<boolean> {
   if (!sourceStat || sourceStat.size <= 1000) return false;
-  const args = ["-y", "-i", sourcePath];
+
+  // Detect (mostly hardcoded) subtitle band in the source so we can mask it before drawing Vietnamese
+  let band: SubtitleBand | null = null;
+  try { band = await detectSubtitleBand(sourcePath); } catch (e: any) { try { log.debug({ err: String(e.message) }, "subtitle band detection failed"); } catch {} }
+  logBand(sourcePath, band);
+
+  const escSrt = escapeFilterPath(srtPath);
   const voiceExists = !!voicePath && fs.existsSync(String(voicePath));
+  const subtitlesFilter = `subtitles=filename='${escSrt}':force_style='Fontsize=20,MarginV=18'`;
+
+  let vf: string;
+  let vLabel = "[vout]";
+  if (band) {
+    const topExpr = (band.top * 100).toFixed(2);
+    const hExpr = ((band.bottom - band.top) * 100).toFixed(2);
+    vf = `[0:v]split=2[orig][band];[band]crop=w=iw:h=trunc(ih*${hExpr}/100):x=0:y=trunc(ih*${topExpr}/100),boxblur=luma_radius=20:luma_power=2:chroma_radius=10:chroma_power=2[bb];[orig][bb]overlay=0:trunc(H*${topExpr}/100)[masked];[masked]${subtitlesFilter}[vout]`;
+  } else {
+    vf = `[0:v]${subtitlesFilter}[vout]`;
+  }
+
+  const args = ["-y", "-i", sourcePath];
   if (voiceExists) args.push("-i", String(voicePath));
-  args.push("-vf", `subtitles=filename='${escapeFilterPath(srtPath)}'`);
+  args.push("-filter_complex", vf, "-map", vLabel);
   if (voiceExists) {
-    args.push("-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-shortest");
+    // don't -shortest: voice track may be shorter than the video (timing comes from ASR segments)
+    args.push("-map", "1:a", "-c:v", "libx264", "-crf", "23", "-preset", "veryfast", "-c:a", "aac");
   } else {
     args.push("-c:a", "copy");
   }
   args.push(renderedPath);
+
   try {
     await runFfmpegWithProgress(args, log, jobId);
     return true;
   } catch (e: any) {
-    try { log.warn({ jobId, err: String(e.message) }, "ffmpeg subtitles burn failed"); } catch {}
+    try { log.warn({ jobId, err: String(e.message) }, "ffmpeg burn failed"); } catch {}
     // retry without subtitle filter (no burn) so preview still works
     try {
       await runFfmpegWithProgress(["-y", "-i", sourcePath, "-c", "copy", "-t", "60", renderedPath], log, jobId);

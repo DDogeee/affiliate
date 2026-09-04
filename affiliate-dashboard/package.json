@@ -9,10 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",
-    "better-sqlite3": "^13.0.3",
     "next": "16.2.1",
     "pg": "^8.23.0",
     "pino": "^10.3.1",

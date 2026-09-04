@@ -7,7 +7,7 @@
 
 ## Prerequisites (local dev — not just Docker)
 - Node 22+ (`node -v`), Git, **FFmpeg 9.0.1** on PATH (`ffmpeg -version` must show 9.0.1), **yt-dlp** on PATH (`yt-dlp --version`). `WeiboSourceAdapter` falls back to `yt-dlp --dump-json` for Sina Visitor System pages — `spawn yt-dlp ENOENT` means yt-dlp not installed.
-- Windows: `winget install Gyan.FFmpeg` (9.0.1) + `pip install yt-dlp` (needs `D:\miniconda\Scripts` on PATH). Restart shell after `winget` (PATH updated). Verify both before `npm run dev`.
+- Windows: `winget install Gyan.FFmpeg` (9.0.1) + `pip install yt-dlp edge-tts` (needs `D:\miniconda\Scripts` on PATH). Restart shell after `winget` (PATH updated). Verify before `npm run dev`: `ffmpeg -version`, `yt-dlp --version`, `edge-tts --help` (edge-tts synthesizes the Vietnamese voiceover via Microsoft's free endpoint — no key; if missing, voiceover is skipped with a warn and only subtitles burn).
 - Without yt-dlp/ffmpeg the fetch will 429 `WEIBO_FETCH_BLOCKED`; pipeline `ffmpeg.ts` currently stubs empty mp4.
 
 ## Commands (run from `affiliate-dashboard/`)
@@ -40,7 +40,8 @@ No test runner configured — no `test` script, no vitest/jest config.
 ## Pipeline & API gotchas
 - Job states (`src/types/job.ts:1`): `queued → fetched → processing → needs_review → approved → publishing → published` plus `skipped/failed`. `POST /api/jobs/:id/fetch` only allowed from `queued|failed` (`src/app/api/jobs/[id]/fetch/route.ts:7`).
 - Routes: `POST /api/jobs` accepts `{sourceUrl|url}` (validated by `weiboUrlSchema` — hostname must be `weibo.com|.cn`), then `POST /api/jobs/:id/fetch` → `POST /api/jobs/:id/localize` → `POST /api/jobs/:id/render` → `pick-offer` → `approve` → `publish`. `fetch` handles both GET and POST.
-- FFmpeg burn is functional when source exists: `subtitles=` filter + optional voice mux, with fallback to source copy — `src/workers/pipeline/ffmpeg.ts:8`. Rendered output re-renders when source/srt/voice mtime is newer than the cached mp4. Don't assume audio track exists (voicePath is stubbed by `tts.ts`).
+- Localize picks transcript by (1) **hardcoded-subtitle OCR** when a subtitle band is detected (`subbands.ts`, temporal-persistence heuristic, override `SUBTITLE_BAND="85,95"`): `ocr_subs.py` extracts timed segments via **RapidOCR** (default, free local) — Qwen (`DASHSCOPE_API_KEY`, qwen-vl-ocr) and tesseract (chi_sim) are opt-in/fallback engines (`OCR_ENGINE`). Whisper only runs when the video has NO hardcoded subs. (2) **ASR**: Groq Whisper (`GROQ_API_KEY`, `whisper-large-v3`) with local faster-whisper fallback (`asr.ts` + `whisper_asr.py`, CPU int8, model in `STORAGE_BASE/tmp/whisper`, `WHISPER_MODEL=base`, disable `ASR_DISABLE=1`), stub last. (3) **Translation** `translate.ts` = zh→vi via Google's free gtx endpoint (free, no key; retried with backoff, degrade-after-3); offline MT (Helsinki `opus-mt-zh-vi` via transformers.js, `MT_MODEL`) is an opt-in hook — note its `onnxruntime-node` binary must be downloadable during `docker build`.
+- Rendered output re-renders when source/srt/voice mtime is newer than the cached mp4.
 
 ## Conventions
 - TypeScript `strict`, `skipLibCheck`, `ES2017` target, `bundler` resolution.

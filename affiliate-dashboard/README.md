@@ -4,9 +4,9 @@ Solo affiliate loop — Weibo → Vietnamese Reels (voice + burned subs) → Sho
 
 ## 30-min handoff
 
-1. Prerequisites: Node 22, **FFmpeg 9.0.1** on PATH (`ffmpeg -version` must show 9.0.1), **yt-dlp** on PATH (`yt-dlp --version`), Git
-   - Windows: `winget install Gyan.FFmpeg` + `pip install yt-dlp` (ensure `D:\miniconda\Scripts` on PATH, restart shell after winget)
-   - Verify: `ffmpeg -version` and `yt-dlp --version` before dev — missing yt-dlp causes `WEIBO_FETCH_BLOCKED: spawn yt-dlp ENOENT`
+1. Prerequisites: Node 22, **FFmpeg 9.0.1** on PATH (`ffmpeg -version` must show 9.0.1), **yt-dlp** on PATH (`yt-dlp --version`), **edge-tts** on PATH (`edge-tts --help` — Vietnamese voiceover, free no key), Git
+   - Windows: `winget install Gyan.FFmpeg` + `pip install yt-dlp edge-tts` (ensure `D:\miniconda\Scripts` on PATH, restart shell after winget)
+   - Verify: `ffmpeg -version`, `yt-dlp --version`, `edge-tts --help` before dev — missing yt-dlp causes `WEIBO_FETCH_BLOCKED: spawn yt-dlp ENOENT`; missing edge-tts skips voiceover (subtitles-only)
 2. Env: `cp .env.example .env.local && cp .env.example .env` and ensure `DATABASE_URL=postgresql://affiliate:affiliate@postgres:5432/affiliate` **unquoted** (Prisma 7 `env()` fails on quoted) + `LOG_LEVEL=info` + `WORKER_URL=http://worker:3001` + FB/TikTok/Shopee tokens. For local dev without Docker, you can use `DATABASE_URL=postgresql://affiliate:affiliate@localhost:5432/affiliate` or fallback `file:./dev.db` with sqlite (switch provider).
 3. Install: `npm install`
 4. DB: `npx prisma migrate dev --name postgres_init && npx prisma generate` — if `Cannot resolve DATABASE_URL`, run `$env:DATABASE_URL="postgresql://affiliate:affiliate@postgres:5432/affiliate"` in this shell first. Postgres must be running (`docker compose up postgres -d`).
@@ -16,6 +16,13 @@ Solo affiliate loop — Weibo → Vietnamese Reels (voice + burned subs) → Sho
 ## Project structure
 
 `src/adapters/*` (Source/Destination/Affiliate), `src/workers/pipeline/*`, `src/app/api/jobs/*`, `src/lib/db|validators|storage|logger`, `storage/source|rendered/` gitignored. `src/lib/logger.ts` is pino JSON with `jobLogger(jobId,stage)`.
+
+## Localization pipeline (which engine runs)
+
+- **OCR first:** if the source has burned-in (hardcoded) subtitles, `src/workers/pipeline/ocr_subs.py` detects the band and extracts timed Chinese cues with **RapidOCR** (default, free) — `OCR_ENGINE=rapid|qwen|tesseract` (qwen needs `DASHSCOPE_API_KEY`, tesseract needs `tesseract-ocr-chi-sim`).
+- **ASR only when no hardcoded subs:** **Groq Whisper** (`GROQ_API_KEY`) → local **faster-whisper** fallback → 2-segment stub.
+- **Translation:** zh→vi **Google gtx** (free, no key, retried) — set `TRANSLATE_PROVIDER=dict` or `MT_MODEL` (offline Helsinki opus model via transformers.js; requires `@huggingface/transformers` to be installed).
+- **Voice:** `edge-tts` (free) → aligned audio; **burn:** masked subtitle band + Vietnamese subs + voice mux via ffmpeg/libass.
 
 ## Docker Compose (microservices)
 
