@@ -21,11 +21,11 @@ export default function FetchButton({ jobId }: { jobId: string }) {
     }
   }
   return (
-    <div className="flex items-center gap-2">
-      <button onClick={doFetch} disabled={loading} className="border px-3 py-1 rounded bg-black text-white text-xs disabled:opacity-50">
+    <div className="flex items-center gap-2 flex-wrap">
+      <button onClick={doFetch} disabled={loading} className="min-h-[44px] border px-4 py-2 rounded-xl bg-[var(--color-primary)] text-white text-sm font-medium disabled:opacity-50 cursor-pointer hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary transition-colors">
         {loading ? "Fetching..." : "Fetch Video"}
       </button>
-      {msg && <span className="text-xs">{msg}</span>}
+      {msg && <span className="text-xs text-gray-700">{msg}</span>}
     </div>
   );
 }

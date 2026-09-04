@@ -40,17 +40,17 @@ export default function ReviewGates({ job }: { job: any }) {
   return (
     <div className="space-y-4">
       {translation.length > 0 && (
-        <div className="border p-3 rounded">
-          <h2 className="font-bold text-sm">Subtitles ({translation.length})</h2>
+        <div className="glass rounded-xl p-4">
+          <h2 className="font-bold text-sm text-gray-900">Subtitles ({translation.length})</h2>
           <SubtitleEditor segments={translation} onSave={saveSubtitles} />
         </div>
       )}
-      <div className="border p-3 rounded">
-        <h2 className="font-bold text-sm">Voice</h2>
+      <div className="glass rounded-xl p-4">
+        <h2 className="font-bold text-sm text-gray-900">Voice</h2>
         <VoicePicker value={voice} onChange={saveVoice} />
       </div>
-      <div className="border p-3 rounded">
-        <h2 className="font-bold text-sm">Shopee Offers {offers.length > 0 ? `(${offers.length})` : "(search on Pick)"}</h2>
+      <div className="glass rounded-xl p-4">
+        <h2 className="font-bold text-sm text-gray-900">Shopee Offers {offers.length > 0 ? `(${offers.length})` : "(search on Pick)"}</h2>
         <ShopeePicker offers={offers as ShopeeOffer[]} onPick={pickOffer} onSkip={skip} />
       </div>
       <ApproveBar canApprove={canApprove} onApprove={approve} onSkip={skip} />

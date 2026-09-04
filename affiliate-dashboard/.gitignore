@@ -7,3 +7,8 @@ dist
 storage/
 prisma/dev.db
 prisma/dev.db-journal
+*.log
+*.err
+dev.db
+dev.db-journal
+.env.test

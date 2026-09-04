@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "jobs" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "source_url" TEXT NOT NULL,
     "source_meta" JSONB,
     "state" TEXT NOT NULL DEFAULT 'queued',
@@ -13,8 +13,10 @@ CREATE TABLE "jobs" (
     "localized_video_path" TEXT,
     "caption" TEXT,
     "publish_status" JSONB,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" DATETIME NOT NULL
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "jobs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
