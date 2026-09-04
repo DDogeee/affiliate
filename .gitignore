@@ -1,11 +1,12 @@
-node_modules/
-dist/
+
+# affiliate-dashboard storage and db
 storage/
-.env
-.opencode/
-.agents/
-_bmad/
-*.log
-coverage/
+affiliate-dashboard/storage/
+affiliate-dashboard/prisma/dev.db
+affiliate-dashboard/prisma/dev.db-journal
+affiliate-dashboard/.next
 _bmad-output/
 
+# opencode deps/cache
+.opencode/node_modules/
+.opencode/package-lock.json

@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Job {
+  id                  String   @id @default(cuid())
+  sourceUrl           String   @map("source_url")
+  sourceMeta          Json?    @map("source_meta")
+  state               String   @default("queued")
+  transcript          Json?
+  translation         Json?
+  subtitleEdits       Json?    @map("subtitle_edits")
+  voiceStyle          Json?    @map("voice_style")
+  shopeeOffers        Json?    @map("shopee_offers")
+  pickedOfferId       String?  @map("picked_offer_id")
+  localizedVideoPath  String?  @map("localized_video_path")
+  caption             String?
+  publishStatus       Json?    @map("publish_status")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([state])
+  @@map("jobs")
+}
