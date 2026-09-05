@@ -83,6 +83,47 @@ def run(cmd: list) -> str:
     return subprocess.run(cmd, capture_output=True, text=True, timeout=120).stdout
 
 
+def clean_subtitle_segments(segments: list) -> list:
+    """Post‑process OCR‑extracted segments.
+
+    - drop single‑character lines (e.g. "V", "D", "O", "OE")
+    - drop known on‑screen logo/noise tokens ("MANT", "PER", "RAP", "BEWAR")
+    - drop duplicate consecutive texts (keeps first occurrence)
+    - optionally merge very short gaps (keep original timing but remove
+      segments < 0.8 s unless they are part of a longer run)
+    - preserve the original start/end timestamps of kept segments
+    """
+    if not segments:
+        return []
+
+    cleaned: list = []
+    prev_text: str | None = None
+    for seg in segments:
+        txt = seg.get("text", "") or ""
+        # 1) drop single‑character or single‑symbol lines
+        if len(txt.strip()) <= 1:
+            continue
+        # 2) drop known noise tokens (case‑insensitive)
+        low = txt.strip().lower()
+        if low in {"mant", "per", "rap", "bewar"}:
+            continue
+        # 3) drop if identical to previous kept text (de‑duplicate)
+        if txt == prev_text:
+            continue
+        # 4) keep only if duration >= 0.8 s (simple heuristic)
+        if cleaned:
+            last = cleaned[-1]
+            dur = seg["start"] - last["end"]
+            if dur < 0.8 and len(txt) < 12:
+                # very short trailing cue – skip
+                continue
+        cleaned.append({k: seg[k] for k in ("start", "end", "text")})
+        prev_text = txt
+    # 5) optionally compress leading/trailing tiny gaps by shifting start times
+    # (simple: just keep timestamps as‑is; caller can re‑time if desired)
+    return cleaned
+
+
 def main(media_path: str, top: str, bottom: str, out_path: str) -> None:
     # engine resolution with graceful degradation: rapid -> qwen(key) -> tesseract
     if ENGINE == "rapid":
@@ -132,7 +173,7 @@ def main(media_path: str, top: str, bottom: str, out_path: str) -> None:
             time.sleep(0.05)  # gentle pacing
         timeline.append((t_sec, txt or ""))
 
-    segments = []
+    segments: list = []
     cur = ""
     seg_start = 0.0
     for t_sec, txt in timeline:
@@ -143,6 +184,9 @@ def main(media_path: str, top: str, bottom: str, out_path: str) -> None:
             seg_start = t_sec if norm(txt) else t_sec + FPS
     if cur and timeline and timeline[-1][0] - seg_start >= 0.4:
         segments.append({"start": round(seg_start, 3), "end": round(timeline[-1][0] + FPS, 3), "text": cur})
+
+    # ---- NEW: clean the segments ----
+    segments = clean_subtitle_segments(segments)
 
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(segments, fh, ensure_ascii=False)
